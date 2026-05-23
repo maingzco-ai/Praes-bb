@@ -1,77 +1,83 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { database } from '../firebase.js';
-import { ref, onValue } from 'firebase/database';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import { ref, onValue, push, serverTimestamp } from 'firebase/database'; // Importamos funciones de Realtime
+import { database } from '../firebase'; // IMPORTANTE: Asegúrate de que esta ruta sea correcta
 
-export default function Avisos({ Oscuro }) {
+export default function Avisos({ Oscuro, userRole }) {
   const [avisos, setAvisos] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [titulo, setTitulo] = useState('');
+  const [contenido, setContenido] = useState('');
+  const [cargando, setCargando] = useState(true);
 
-  const fondo = Oscuro ? '#1c1c1e' : '#ffffff';
+  // Colores para el tema
+  const fondo = Oscuro ? '#1c1c1e' : '#f2f2f7';
   const texto = Oscuro ? '#ffffff' : '#1c1c1e';
-  const textoSec = Oscuro ? '#a0a0a0' : '#8e8e93';
-  const tarjetaFondo = Oscuro ? '#2c2c2e' : '#ffffff';
-  const borde = Oscuro ? '#3a3a3c' : '#f2f2f7';
 
+  // 1. Conexión Realtime
   useEffect(() => {
-    const avisosRef = ref(database, '/Avisos');
-    const unsub = onValue(avisosRef, (snapshot) => {
+    const avisosRef = ref(database, 'avisos/');
+    
+    const unsubscribe = onValue(avisosRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const lista = Object.keys(data).map((key) => ({ id: key, ...data[key] }));
-        lista.reverse();
-        setAvisos(lista);
-      } else {
-        setAvisos([]);
+        const lista = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        // Ordenamos para que el más nuevo salga primero
+        setAvisos(lista.reverse());
       }
-      setLoading(false);
+      setCargando(false);
     });
-    return () => unsub();
+
+    return () => unsubscribe();
   }, []);
 
-  if (loading) {
-    return (
-      <View style={[styles.centro, { backgroundColor: fondo }]}>
-        <ActivityIndicator size="small" color="#007aff" />
-      </View>
-    );
-  }
+  // 2. Publicar Aviso (Realtime)
+  const publicarAviso = () => {
+    if (!titulo || !contenido) return;
+
+    const avisosRef = ref(database, 'avisos/');
+    push(avisosRef, {
+      titulo,
+      contenido,
+      fecha: new Date().toLocaleDateString(),
+    });
+    setTitulo('');
+    setContenido('');
+  };
+
+  if (cargando) return <ActivityIndicator size="large" color="#2ea44f" />;
 
   return (
-    <SafeAreaView style={[styles.contenedor, { backgroundColor: fondo }]}>
-      <Text style={[styles.titulo, { color: texto }]}>Avisos</Text>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {avisos.length === 0 ? (
-          <Text style={[styles.vacio, { color: textoSec }]}>No hay avisos por ahora.</Text>
-        ) : (
-          avisos.map((aviso) => (
-            <View key={aviso.id} style={[styles.tarjeta, { backgroundColor: tarjetaFondo, borderColor: borde }]}>
-              <Text style={[styles.avisoTitulo, { color: texto }]}>{aviso.title || aviso.titulo}</Text>
-              <Text style={[styles.avisoContenido, { color: textoSec }]}>{aviso.content || aviso.contenido}</Text>
-              <Text style={[styles.avisoMeta, { color: textoSec }]}>
-                {aviso.author || aviso.autor} • {aviso.date || aviso.fecha}
-              </Text>
-            </View>
-          ))
+    <View style={[styles.contenedor, { backgroundColor: fondo }]}>
+      {userRole === 'admin' && (
+        <View style={styles.tarjetaAdmin}>
+          <TextInput style={styles.input} placeholder="Título" value={titulo} onChangeText={setTitulo} />
+          <TextInput style={[styles.input, styles.inputAlto]} placeholder="Contenido" value={contenido} onChangeText={setContenido} multiline />
+          <TouchableOpacity style={styles.boton} onPress={publicarAviso}>
+            <Text style={{color: '#FFF', fontWeight: 'bold'}}>Publicar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <FlatList
+        data={avisos}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.aviso}>
+            <Text style={[styles.titulo, { color: texto }]}>{item.titulo}</Text>
+            <Text style={{ color: texto }}>{item.contenido}</Text>
+          </View>
         )}
-      </ScrollView>
-    </SafeAreaView>
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  contenedor: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
-  centro: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  titulo: { fontSize: 26, fontWeight: '700', marginBottom: 20 },
-  vacio: { textAlign: 'center', fontSize: 14, marginTop: 40 },
-  tarjeta: {
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  avisoTitulo: { fontSize: 17, fontWeight: '600', marginBottom: 6 },
-  avisoContenido: { fontSize: 14, lineHeight: 20, marginBottom: 8 },
-  avisoMeta: { fontSize: 11, fontWeight: '500' },
+  contenedor: { flex: 1, padding: 20 },
+  tarjetaAdmin: { backgroundColor: '#FFF', padding: 15, borderRadius: 10, marginBottom: 20 },
+  input: { borderBottomWidth: 1, marginBottom: 10, padding: 5 },
+  inputAlto: { height: 60 },
+  boton: { backgroundColor: '#34c759', padding: 10, borderRadius: 8, alignItems: 'center' },
+  aviso: { backgroundColor: '#FFF', padding: 15, borderRadius: 10, marginBottom: 10 },
+  titulo: { fontWeight: 'bold', fontSize: 16 }
 });
