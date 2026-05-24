@@ -1,5 +1,4 @@
 import { TouchableHighlight, View, Image, Text, StyleSheet } from "react-native";
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function BarraNav({ Oscuro, pantalla, onCambiarPantalla }) {
   const fondoBarra = Oscuro ? '#1c1c1e' : '#ffffff';
@@ -14,7 +13,7 @@ export default function BarraNav({ Oscuro, pantalla, onCambiarPantalla }) {
   ];
 
   return (
-    <SafeAreaView style={[styles.contenedor, { backgroundColor: fondoBarra }]}>
+    <View style={[styles.contenedor, { backgroundColor: fondoBarra }]}>
       {items.map((item) => (
         <TouchableHighlight
           key={item.clave}
@@ -30,31 +29,21 @@ export default function BarraNav({ Oscuro, pantalla, onCambiarPantalla }) {
           </View>
         </TouchableHighlight>
       ))}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   contenedor: {
-    flex: 1,
+    height: 70, // <-- LA SOLUCIÓN: Altura fija, no flex.
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0'
   },
-  itemNav: {
-    flex: 0.25,
-    alignItems: 'center',
-  },
-  itemContenido: {
-    alignItems: 'center',
-  },
-  icono: {
-    width: 28,
-    height: 28,
-    resizeMode: 'contain',
-    marginBottom: 4,
-  },
-  label: {
-    fontSize: 11,
-  },
+  itemNav: { flex: 0.25, alignItems: 'center' },
+  itemContenido: { alignItems: 'center' },
+  icono: { width: 28, height: 28, resizeMode: 'contain', marginBottom: 4 },
+  label: { fontSize: 11 },
 });

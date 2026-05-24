@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+// Importaciones de Firebase Realtime Database
 import { database } from '../firebase.js'; 
 import { ref, onValue } from 'firebase/database';
 
+// COMPONENTE SECUNDARIO: Tarjeta individual por cada Grado Escolar
 function TarjetaCurso({ item, Oscuro, fondoTarjeta, textoPrincipal, textoSecundario, bordes }) {
   const [expandido, setExpandido] = useState(false);
   const historialClaves = item.history ? Object.keys(item.history) : [];
@@ -12,34 +15,64 @@ function TarjetaCurso({ item, Oscuro, fondoTarjeta, textoPrincipal, textoSecunda
   return (
     <View style={[styles.tarjeta, { backgroundColor: fondoTarjeta, borderColor: bordes }]}>
       <TouchableOpacity 
-        style={styles.tarjetaHeader} 
+        style={styles.tarjetaHeader}
         onPress={() => setExpandido(!expandido)}
         activeOpacity={0.6}
       >
         <View style={styles.infoIzquierda}>
-          <Text style={[styles.textoCurso, { color: textoPrincipal }]}>{item.name}</Text>
-          <Text style={[styles.textoSubItem, { color: textoSecundario }]}>Progreso Ambiental</Text>
+          <Text style={[styles.textoCurso, { color: textoPrincipal }]}>
+            {item.name}
+          </Text>
+          <Text style={[styles.textoSubItem, { color: textoSecundario }]}>
+            Progreso Ambiental
+          </Text>
         </View>
         <View style={styles.infoDerecha}>
-          <Text style={[styles.textoPuntaje, { color: textoPrincipal }]}>{item.score ? item.score.toFixed(1) : '0.0'}</Text>
-          <Text style={[styles.textoPts, { color: textoSecundario }]}>pts</Text>
-          <Text style={styles.iconoFlecha}>{expandido ? ' ◟ ' : ' ◝ '}</Text>
+          <Text style={[styles.textoPuntaje, { color: textoPrincipal }]}>
+            {item.score ? item.score.toFixed(1) : '0.0'}
+          </Text>
+          <Text style={[styles.textoPts, { color: textoSecundario }]}>
+            pts
+          </Text>
+          <Text style={styles.iconoFlecha}>
+            {expandido ? '▲' : '▼'}
+          </Text>
         </View>
       </TouchableOpacity>
+
+      {/* HISTORIAL DESPLEGABLE: Muestra los kilos y puntos acumulados */}
       {expandido && (
         <View style={[styles.despliegueContenido, { backgroundColor: fondoExpandido }]}>
-          <View style={[styles.lineaDivisoria, { backgroundColor: bordes }]} />
-          <Text style={[styles.tituloSeccionSecundaria, { color: textoSecundario }]}>Historial de Aportes</Text>
+          <View style={styles.lineaDivisoria} />
+          <Text style={[styles.tituloSeccionSecundaria, { color: textoSecundario }]}>
+            Historial de Aportes
+          </Text>
           
-          {historialClaves.length > 0 ? (
-            historialClaves.slice(0, 3).map((key) => (
-              <View key={key} style={styles.itemHistorial}>
-                <Text style={[styles.textoLog, { color: textoSecundario }]}>• Registro: {key.substring(0, 6)}</Text>
-                <Text style={styles.textoLogPts}>+{item.history[key].Puntos || item.history[key].score || 0} pts</Text>
-              </View>
-            ))
+          {historialClaves.length === 0 ? (
+            <Text style={[styles.textoVacio, { color: textoSecundario }]}>
+              No hay registros de reciclaje aún.
+            </Text>
           ) : (
-            <Text style={[styles.textoHistorialVacio, { color: textoSecundario }]}>Sin registros de aportes recientes.</Text>
+            historialClaves.map((clave) => {
+              const registro = item.history[clave];
+              return (
+                <View key={clave} style={styles.filaHistorial}>
+                  <Text style={[styles.textoHistorialTipo, { color: textoPrincipal }]}>
+                    🌱 {registro.tipo || 'Reciclaje'}
+                  </Text>
+                  <View style={styles.historialMetricas}>
+                    {registro.kg && (
+                      <Text style={[styles.textoHistorialKg, { color: textoSecundario }]}>
+                        {registro.kg} kg
+                      </Text>
+                    )}
+                    <Text style={styles.textoHistorialPuntos}>
+                      +{registro.Puntos} pts
+                    </Text>
+                  </View>
+                </View>
+              );
+            })
           )}
         </View>
       )}
@@ -47,164 +80,204 @@ function TarjetaCurso({ item, Oscuro, fondoTarjeta, textoPrincipal, textoSecunda
   );
 }
 
+// COMPONENTE PRINCIPAL: Tabla de posiciones general del PRAES
 export default function Tablainfo({ Oscuro }) {
-  const [cursos, setCursos] = useState([]);
-  const [noticia, setNoticia] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const fondoTabla = Oscuro ? '#1c1c1e' : '#ffffff';
+  const [listaGrados, setListaGrados] = useState([]);
+  const [cargando, setCargando] = useState(true);
+
+  // Paleta de colores dinámica según el estado del switch de Modo Oscuro
+  const fondoPantalla = Oscuro ? '#1c1c1e' : '#f2f2f7';
   const textoPrincipal = Oscuro ? '#ffffff' : '#1c1c1e';
   const textoSecundario = Oscuro ? '#a0a0a0' : '#8e8e93';
-  const fondoNoticias = Oscuro ? '#2c2c2e' : '#fbfbfd';
-  const bordes = Oscuro ? '#3a3a3c' : '#f2f2f7';
+  const fondoTarjeta = Oscuro ? '#2c2c2e' : '#ffffff';
+  const colorBordes = Oscuro ? '#3a3a3c' : '#f2f2f2';
 
   useEffect(() => {
-    console.log("📡 Conectando a la raíz del PRAES...");
-    const rootRef = ref(database, '/'); 
-
-    const desubscribir = onValue(rootRef, (snapshot) => {
-      const data = snapshot.val();
-      
-      if (data) {
-        // 1. PROCESAR GRADOS (Tu Arreglo Real)
-        if (data.Grados) {
-          // Eliminamos el espacio vacío inicial del arreglo con filter(Boolean)
-          const listaLimpia = data.Grados.filter(Boolean);
-          // Ordenamos de mayor a menor puntuación por Score
-          listaLimpia.sort((a, b) => (b.score || 0) - (a.score || 0));
-          setCursos(listaLimpia);
-        }
-
-        // 2. PROCESAR NOTICIAS (Tu Objeto Real)
-        if (data.Noticias) {
-          const clavesNoticias = Object.keys(data.Noticias);
-          if (clavesNoticias.length > 0) {
-            // Tomamos la última noticia subida por el administrador
-            const ultimaClave = clavesNoticias[clavesNoticias.length - 1];
-            setNoticia(data.Noticias[ultimaClave]);
-          }
-        }
+    const gradosRef = ref(database, 'Grados');
+    
+    // Escucha activa y sincronización directa con Realtime Database
+    const unsubscribe = onValue(gradosRef, (snapshot) => {
+      const datos = snapshot.val();
+      if (datos) {
+        // Filtramos valores nulos y ordenamos el ranking de mayor a menor puntaje
+        const procesados = datos
+          .filter(g => g !== null)
+          .sort((a, b) => (b.score || 0) - (a.score || 0));
+        setListaGrados(procesados);
       }
-      setLoading(false);
+      setCargando(false);
     }, (error) => {
-      console.error("🚫 Error en Firebase:", error.message);
-      setLoading(false);
+      console.error("Error cargando base de datos PRAES: ", error);
+      setCargando(false);
     });
 
-    return () => desubscribir();
+    return () => unsubscribe();
   }, []);
 
-  if (loading) {
+  if (cargando) {
     return (
-      <View style={styles.contenedorCarga}>
-        <ActivityIndicator size="small" color="#000000" />
+      <View style={[styles.centroCarga, { backgroundColor: fondoPantalla }]}>
+        <ActivityIndicator size="large" color="#34c759" />
+        <Text style={[styles.textoCarga, { color: textoSecundario }]}>
+          Sincronizando Ranking...
+        </Text>
       </View>
     );
   }
 
-  const estiloDinamico = {
-    contenedorPrincipal: { backgroundColor: fondoTabla },
-    noticias: { backgroundColor: fondoNoticias, borderBottomColor: bordes },
-    tarjetaNoticia: { backgroundColor: fondoTabla, borderColor: bordes },
-    tituloNoticia: { color: textoPrincipal },
-    contenidoNoticia: { color: textoSecundario },
-    placeholderNoticias: { color: textoSecundario },
-    tituloSeccion: { color: textoPrincipal },
-    textoSinvatos: { color: textoSecundario },
-  };
-
   return (
-    <SafeAreaView style={[styles.contenedorPrincipal, estiloDinamico.contenedorPrincipal]}>
-      
-      <View style={[styles.espacioNoticias, estiloDinamico.noticias]}>
-        {noticia ? (
-          <View style={[styles.tarjetaNoticiaContenedor, estiloDinamico.tarjetaNoticia]}>
-            <Text style={styles.tagNoticia}>NUEVO RETO</Text>
-            <Text style={[styles.tituloNoticia, estiloDinamico.tituloNoticia]}>{noticia.title}</Text>
-            <Text style={[styles.contenidoNoticia, estiloDinamico.contenidoNoticia]}>{noticia.content}</Text>
-            <Text style={styles.autorNoticia}>Por: {noticia.author} • {noticia.date}</Text>
-          </View>
-        ) : (
-          <Text style={[styles.placeholderNoticias, estiloDinamico.placeholderNoticias]}>No hay noticias disponibles</Text>
-        )}
-      </View>
+    <SafeAreaView style={[styles.contenedorBase, { backgroundColor: fondoPantalla }]} edges={['top', 'left', 'right']}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        
+        <View style={styles.headerTabla}>
+          <Text style={[styles.tituloPantalla, { color: textoPrincipal }]}>
+            Líderes Ambientales
+          </Text>
+          <Text style={[styles.subtituloPantalla, { color: textoSecundario }]}>
+            Ranking oficial de reciclaje escolar
+          </Text>
+        </View>
 
-      <View style={styles.seccionLista}>
-        <Text style={[styles.tituloSeccion, estiloDinamico.tituloSeccion]}>Leaderboard</Text>
-        <ScrollView 
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {cursos.length === 0 ? (
-            <Text style={[styles.textoSinvatos, estiloDinamico.textoSinvatos]}>No hay posiciones registradas.</Text>
-          ) : (
-            cursos.map((curso, index) => (
-              <TarjetaCurso key={index} item={curso} Oscuro={Oscuro}
-                fondoTarjeta={fondoTabla} textoPrincipal={textoPrincipal}
-                textoSecundario={textoSecundario} bordes={bordes} />
-            ))
-          )}
-        </ScrollView>
-      </View>
+        <View style={styles.bloqueLista}>
+          {listaGrados.map((grado, indice) => (
+            <TarjetaCurso
+              key={grado.name || indice.toString()}
+              item={grado}
+              Oscuro={Oscuro}
+              fondoTarjeta={fondoTarjeta}
+              textoPrincipal={textoPrincipal}
+              textoSecundario={textoSecundario}
+              bordes={colorBordes}
+            />
+          ))}
+        </View>
+
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  contenedorPrincipal: { flex: 1, backgroundColor: '#ffffff' },
-  espacioNoticias: {
-    height: '35%',
-    backgroundColor: '#fbfbfd', // Gris sutil característico de Apple
+  contenedorBase: {
+    flex: 1,
+  },
+  centroCarga: {
+    flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f2f2f7',
+    alignItems: 'center',
   },
-  tarjetaNoticiaContenedor: {
-    backgroundColor: '#ffffff',
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#e5e5ea',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+  textoCarga: {
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '500',
   },
-  tagNoticia: { fontSize: 10, fontWeight: '700', color: '#007aff', letterSpacing: 1, marginBottom: 4 },
-  tituloNoticia: { fontSize: 20, fontWeight: '700', color: '#1c1c1e', letterSpacing: -0.5, marginBottom: 4 },
-  contenidoNoticia: { fontSize: 14, color: '#3a3a3c', lineHeight: 18, marginBottom: 8 },
-  autorNoticia: { fontSize: 11, color: '#8e8e93', fontWeight: '500' },
-  placeholderNoticias: { color: '#a0a0a0', fontSize: 14, textAlign: 'center' },
-  seccionLista: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
-  tituloSeccion: { fontSize: 22, fontWeight: '700', color: '#000000', marginBottom: 16, letterSpacing: -0.5 },
-  scrollContent: { paddingBottom: 20 },
+  headerTabla: {
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+  },
+  tituloPantalla: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    letterSpacing: -0.5,
+  },
+  subtituloPantalla: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  bloqueLista: {
+    paddingHorizontal: 16,
+    paddingBottom: 30,
+  },
   tarjeta: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     marginBottom: 12,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#f2f2f2',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  tarjetaHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18 },
-  infoIzquierda: { flex: 1 },
-  textoCurso: { fontSize: 18, fontWeight: '600', color: '#1c1c1e', letterSpacing: -0.4 },
-  textoSubItem: { fontSize: 12, color: '#8e8e93', marginTop: 2 },
-  infoDerecha: { flexDirection: 'row', alignItems: 'baseline' },
-  textoPuntaje: { fontSize: 20, fontWeight: '700', color: '#000000' },
-  textoPts: { fontSize: 12, color: '#8e8e93', marginLeft: 3, marginRight: 8 },
-  iconoFlecha: { fontSize: 12, color: '#c7c7cc', fontWeight: 'bold' },
-  despliegueContenido: { paddingHorizontal: 18, paddingBottom: 18, backgroundColor: '#fbfbfd', borderBottomLeftRadius: 16, borderBottomRightRadius: 16 },
-  lineaDivisoria: { height: 1, backgroundColor: '#f2f2f7', marginBottom: 12 },
-  tituloSeccionSecundaria: { fontSize: 13, fontWeight: '600', color: '#3a3a3c', marginBottom: 8 },
-  itemHistorial: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  textoLog: { fontSize: 13, color: '#636366' },
-  textoLogPts: { fontSize: 13, fontWeight: '600', color: '#34c759' },
-  textoHistorialVacio: { fontSize: 13, color: '#8e8e93', fontStyle: 'italic' },
-  contenedorCarga: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff' },
-  textoSinvatos: { textAlign: 'center', color: '#8e8e93', fontSize: 14, marginTop: 30 }
+  tarjetaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 18,
+  },
+  infoIzquierda: {
+    flex: 1,
+  },
+  textoCurso: {
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: -0.4,
+  },
+  textoSubItem: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  infoDerecha: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  textoPuntaje: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  textoPts: {
+    fontSize: 12,
+    marginLeft: 3,
+    marginRight: 12,
+  },
+  iconoFlecha: {
+    fontSize: 12,
+    color: '#c7c7cc',
+    fontWeight: 'bold',
+  },
+  despliegueContenido: {
+    paddingHorizontal: 18,
+    paddingBottom: 18,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  lineaDivisoria: {
+    height: 1,
+    backgroundColor: '#e5e5ea',
+    marginBottom: 12,
+  },
+  tituloSeccionSecundaria: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  textoVacio: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    paddingVertical: 4,
+  },
+  filaHistorial: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  textoHistorialTipo: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  historialMetricas: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  textoHistorialKg: {
+    fontSize: 13,
+    marginRight: 10,
+  },
+  textoHistorialPuntos: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#34c759',
+  },
 });
