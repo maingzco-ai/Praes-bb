@@ -43,7 +43,7 @@ function TarjetaCurso({ item, Oscuro, fondoTarjeta, textoPrincipal, textoSecunda
       {/* HISTORIAL DESPLEGABLE: Muestra los kilos y puntos acumulados */}
       {expandido && (
         <View style={[styles.despliegueContenido, { backgroundColor: fondoExpandido }]}>
-          <View style={styles.lineaDivisoria} />
+          <View style={[styles.lineaDivisoria, { backgroundColor: colorBordes }]} />
           <Text style={[styles.tituloSeccionSecundaria, { color: textoSecundario }]}>
             Historial de Aportes
           </Text>

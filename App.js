@@ -1,147 +1,128 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Modal, TextInput } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { StyleSheet, View, Text, Pressable, Modal, TextInput, Animated } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-
-import Tablainfo from './Components/Tablainfo.js';
-import BarraNav from './Components/BarraNav.js';
-import Avisos from './Components/Avisos.js';
-import Retos from './Components/Retos.js';
-import InfoApp from './Components/InfoApp.js';
-import Admin from './Components/Admin.js';
+import Tablainfo from './Components/Tablainfo';
+import BarraNav from './Components/BarraNav';
+import Avisos from './Components/Avisos';
+import Retos from './Components/Retos';
+import InfoApp from './Components/InfoApp';
+import Admin from './Components/Admin';
+import { getTheme, sharedStyles } from './theme';
 
 export default function App() {
-  const [Oscuro, setOscuro] = useState(false);
-  const [Infoapp, setInfoapp] = useState(false);
-  const [pantalla, setPantalla] = useState('tabla');
+  const [isDark, setIsDark] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+  const [screen, setScreen] = useState('tabla');
   const [userRole, setUserRole] = useState('viewer');
-  const [modalLogin, setModalLogin] = useState(false);
+  const [loginVisible, setLoginVisible] = useState(false);
   const [password, setPassword] = useState('');
 
-  const intentarLogin = () => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const theme = getTheme(isDark);
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const handleLogin = () => {
     if (password === 'colombo2026') {
       setUserRole('admin');
-      setModalLogin(false);
+      setLoginVisible(false);
       setPassword('');
-    } else alert('Contraseña incorrecta');
+    } else {
+      alert('Contraseña incorrecta');
+    }
   };
 
-  const renderVista = () => {
-    if (pantalla === 'avisos') return <Avisos Oscuro={Oscuro} userRole={userRole} />;
-    if (pantalla === 'retos') return <Retos Oscuro={Oscuro} userRole={userRole} />;
-    if (pantalla === 'admin') return <Admin Oscuro={Oscuro} userRole={userRole} setUserRole={setUserRole} setModalLogin={setModalLogin} />;
-    return <Tablainfo Oscuro={Oscuro} />;
+  const renderScreen = () => {
+    switch (screen) {
+      case 'avisos':
+        return <Avisos isDark={isDark} userRole={userRole} />;
+      case 'retos':
+        return <Retos isDark={isDark} userRole={userRole} />;
+      case 'admin':
+        return (
+          <Admin
+            isDark={isDark}
+            userRole={userRole}
+            setUserRole={setUserRole}
+            setLoginVisible={setLoginVisible}
+          />
+        );
+      default:
+        return <Tablainfo isDark={isDark} />;
+    }
   };
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={[styles.base, { backgroundColor: Oscuro ? '#000' : '#F2F2F7' }]}>
-        
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => setOscuro(!Oscuro)}>
-            <Text style={styles.icon}>{Oscuro ? '☀️' : '🌙'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setInfoapp(true)}>
-            <Text style={styles.icon}>ℹ️</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.contenido}>
-          {renderVista()}
-        </View>
-
-        <BarraNav Oscuro={Oscuro} pantalla={pantalla} onCambiarPantalla={setPantalla} />
-
-        <Modal visible={Infoapp} transparent animationType="fade">
-          <View style={styles.capaModal}>
-            <View style={[styles.tarjeta, { backgroundColor: Oscuro ? '#1C1C1E' : '#FFF' }]}>
-              <InfoApp />
-              <TouchableOpacity style={styles.btnRojo} onPress={() => setInfoapp(false)}>
-                <Text style={styles.txtBtn}>Cerrar</Text>
-              </TouchableOpacity>
-            </View>
+      <Animated.View style={{ flex: 1, backgroundColor: theme.background, opacity: fadeAnim }}>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <Pressable onPress={() => setIsDark(!isDark)}>
+              <Text style={styles.icon}>{isDark ? '☀️' : '🌙'}</Text>
+            </Pressable>
+            <Pressable onPress={() => setShowInfo(true)}>
+              <Text style={styles.icon}>ℹ️</Text>
+            </Pressable>
           </View>
-        </Modal>
+          <View style={styles.content}>{renderScreen()}</View>
+          <BarraNav isDark={isDark} screen={screen} onChangeScreen={setScreen} />
 
-        <Modal visible={modalLogin} transparent animationType="slide">
-          <View style={styles.capaModal}>
-            <View style={[styles.tarjeta, { backgroundColor: Oscuro ? '#1C1C1E' : '#FFF' }]}>
-              <Text style={[styles.titulo, { color: Oscuro ? '#FFF' : '#000' }]}>Docente</Text>
-              <TextInput 
-                style={[styles.input, { color: Oscuro ? '#FFF' : '#000' }]} 
-                secureTextEntry 
-                value={password} 
-                onChangeText={setPassword} 
-              />
-              <TouchableOpacity style={styles.btnVerde} onPress={intentarLogin}>
-                <Text style={styles.txtBtn}>Entrar</Text>
-              </TouchableOpacity>
+          {/* Info modal */}
+          <Modal visible={showInfo} transparent animationType="fade">
+            <View style={styles.modalBackdrop}>
+              <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
+                <InfoApp />
+                <Pressable style={styles.btnClose} onPress={() => setShowInfo(false)}>
+                  <Text style={styles.btnCloseText}>Cerrar</Text>
+                </Pressable>
+              </View>
             </View>
-          </View>
-        </Modal>
+          </Modal>
 
-      </SafeAreaView>
+          {/* Login modal */}
+          <Modal visible={loginVisible} transparent animationType="slide">
+            <View style={styles.modalBackdrop}>
+              <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
+                <Text style={[styles.title, { color: theme.text }]}>Docente</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text }]}
+                  secureTextEntry
+                  placeholder="Contraseña"
+                  placeholderTextColor={theme.subtle}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                <Pressable
+                  style={[sharedStyles.buttonBase, { backgroundColor: theme.primary }]}
+                  onPress={handleLogin}
+                >
+                  <Text style={styles.btnText}>Entrar</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Modal>
+        </SafeAreaView>
+      </Animated.View>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  base: { 
-    flex: 1 
-  },
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    padding: 20 
-  },
-  icon: { 
-    fontSize: 22 
-  },
-  contenido: { 
-    flex: 1, 
-    paddingHorizontal: 16 
-  },
-  capaModal: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.5)', 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  tarjeta: { 
-    width: '85%', 
-    borderRadius: 20, 
-    padding: 20, 
-    alignItems: 'center' 
-  },
-  titulo: { 
-    fontSize: 18, 
-    fontWeight: 'bold', 
-    marginBottom: 15 
-  },
-  input: { 
-    width: '100%', 
-    borderWidth: 1, 
-    borderColor: '#DDD', 
-    borderRadius: 10, 
-    padding: 10, 
-    marginBottom: 15 
-  },
-  btnVerde: { 
-    backgroundColor: '#34C759', 
-    padding: 12, 
-    borderRadius: 10, 
-    width: '100%', 
-    alignItems: 'center' 
-  },
-  btnRojo: { 
-    backgroundColor: '#FF3B30', 
-    padding: 12, 
-    borderRadius: 10, 
-    width: '100%', 
-    alignItems: 'center', 
-    marginTop: 10 
-  },
-  txtBtn: { 
-    color: '#FFF', 
-    fontWeight: 'bold' 
-  }
+  container: { flex: 1 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', padding: 20 },
+  icon: { fontSize: 22 },
+  content: { flex: 1, paddingHorizontal: 16 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalCard: { width: '85%', borderRadius: 20, padding: 20, alignItems: 'center' },
+  title: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
+  input: { width: '100%', borderWidth: 1, borderRadius: 8, padding: 10, marginBottom: 15 },
+  btnClose: { backgroundColor: '#FF3B30', padding: 12, borderRadius: 8, width: '100%', alignItems: 'center' },
+  btnCloseText: { color: '#fff', fontWeight: 'bold' },
+  btnText: { color: '#fff', fontWeight: 'bold' },
 });

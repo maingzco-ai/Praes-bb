@@ -1,104 +1,63 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, FlatList, ActivityIndicator } from 'react-native';
-import { database } from '../firebase'; 
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View, Text, FlatList, ActivityIndicator } from 'react-native';
+import { database } from '../firebase';
 import { ref, onValue } from 'firebase/database';
+import { getTheme, sharedStyles } from '../theme';
 
-export default function Avisos({ Oscuro }) {
+export default function Avisos({ isDark }) {
   const [avisos, setAvisos] = useState([]);
-  const [cargando, setCargando] = useState(true);
-
-  const fondo = Oscuro ? '#1c1c1e' : '#f2f2f7';
-  const texto = Oscuro ? '#ffffff' : '#1c1c1e';
-  const tarjetaBg = Oscuro ? '#2c2c2e' : '#ffffff';
-  const borde = Oscuro ? '#3a3a3c' : '#e0e0e0';
+  const [loading, setLoading] = useState(true);
+  const theme = getTheme(isDark);
 
   useEffect(() => {
     const avisosRef = ref(database, 'avisos/');
-    const unsubscribe = onValue(avisosRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const lista = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        setAvisos(lista.reverse());
-      } else {
-        setAvisos([]);
-      }
-      setCargando(false);
+    const unsub = onValue(avisosRef, (snap) => {
+      const data = snap.val();
+      const list = data
+        ? Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse()
+        : [];
+      setAvisos(list);
+      setLoading(false);
     });
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
-  if (cargando) {
+  if (loading) {
     return (
-      <View style={[styles.centro, { backgroundColor: fondo }]}>
-        <ActivityIndicator size="large" color="#007aff" />
+      <View style={[styles.center, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
   }
 
+  const renderItem = ({ item }) => (
+    <View style={[sharedStyles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <Text style={styles.tag}>📢 COMUNICADO OFFICIAL</Text>
+      <Text style={[styles.title, { color: theme.text }]}>{item.titulo}</Text>
+      <Text style={[styles.body, { color: theme.text }]}>{item.contenido}</Text>
+      <Text style={styles.date}>Publicado el: {item.fecha}</Text>
+    </View>
+  );
+
   return (
-    <View style={[styles.base, { backgroundColor: fondo }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <FlatList
         data={avisos}
         keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        ListEmptyComponent={<Text style={styles.empty}>No hay avisos o noticias.</Text>}
         showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <View style={[styles.tarjeta, { backgroundColor: tarjetaBg, borderColor: borde }]}>
-            <Text style={styles.tag}>📢 COMUNICADO OFFICIAL</Text>
-            <Text style={[styles.titulo, { color: texto }]}>{item.titulo}</Text>
-            <Text style={[styles.contenido, { color: texto }]}>{item.contenido}</Text>
-            <Text style={styles.fecha}>Publicado el: {item.fecha}</Text>
-          </View>
-        )}
-        ListEmptyComponent={
-          <Text style={styles.vacio}>No hay avisos o noticias en el muro escolar.</Text>
-        }
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  base: {
-    flex: 1,
-    padding: 15,
-  },
-  centro: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tarjeta: {
-    padding: 16,
-    borderRadius: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    elevation: 1,
-  },
-  tag: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#007aff',
-    marginBottom: 6,
-    letterSpacing: 0.5,
-  },
-  titulo: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 6,
-  },
-  contenido: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 10,
-  },
-  fecha: {
-    fontSize: 11,
-    color: '#8e8e93',
-  },
-  vacio: {
-    textAlign: 'center',
-    color: '#8e8e93',
-    marginTop: 40,
-    fontStyle: 'italic',
-  },
+  container: { flex: 1, padding: 15 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  tag: { fontSize: 10, fontWeight: '700', color: '#007aff', marginBottom: 6 },
+  title: { fontSize: 18, fontWeight: 'bold', marginBottom: 6 },
+  body: { fontSize: 14, lineHeight: 20, marginBottom: 10 },
+  date: { fontSize: 11, color: '#8e8e93' },
+  empty: { textAlign: 'center', color: '#8e8e93', marginTop: 40, fontStyle: 'italic' },
 });

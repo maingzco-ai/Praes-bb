@@ -1,49 +1,46 @@
-import { TouchableHighlight, View, Image, Text, StyleSheet } from "react-native";
+import React from 'react';
+import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { getTheme } from '../theme';
 
-export default function BarraNav({ Oscuro, pantalla, onCambiarPantalla }) {
-  const fondoBarra = Oscuro ? '#1c1c1e' : '#ffffff';
-  const textoColor = Oscuro ? '#ffffff' : '#000000';
-  const activeColor = '#007aff';
-
+export default function BarraNav({ isDark, screen, onChangeScreen }) {
+  const theme = getTheme(isDark);
   const items = [
-    { clave: 'tabla', icono: require('../assets/Rankingtable.png'), label: 'Tabla' },
-    { clave: 'avisos', icono: require('../assets/avisos.png'), label: 'Avisos' },
-    { clave: 'retos', icono: require('../assets/retos.png'), label: 'Retos' },
-    { clave: 'admin', icono: require('../assets/admin.png'), label: 'Admin' },
+    { key: 'tabla', icon: require('../assets/Rankingtable.png'), label: 'Tabla' },
+    { key: 'avisos', icon: require('../assets/avisos.png'), label: 'Avisos' },
+    { key: 'retos', icon: require('../assets/retos.png'), label: 'Retos' },
+    { key: 'admin', icon: require('../assets/admin.png'), label: 'Admin' },
   ];
 
   return (
-    <View style={[styles.contenedor, { backgroundColor: fondoBarra }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {items.map((item) => (
-        <TouchableHighlight
-          key={item.clave}
-          style={styles.itemNav}
-          onPress={() => onCambiarPantalla(item.clave)}
-          underlayColor="transparent"
+        <Pressable
+          key={item.key}
+          style={styles.item}
+          onPress={() => onChangeScreen(item.key)}
         >
-          <View style={styles.itemContenido}>
-            <Image source={item.icono} style={styles.icono} />
-            <Text style={[styles.label, { color: pantalla === item.clave ? activeColor : textoColor }]}>
-              {item.label}
-            </Text>
-          </View>
-        </TouchableHighlight>
+          <Image source={item.icon} style={styles.icon} />
+          <Text style={{ color: screen === item.key ? theme.accent : theme.text, fontSize: 11 }}>
+            {item.label}
+          </Text>
+        </Pressable>
       ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  contenedor: {
-    height: 70, // <-- LA SOLUCIÓN: Altura fija, no flex.
+  container: {
+    height: 70,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0'
+    borderTopColor: '#e0e0e0',
   },
-  itemNav: { flex: 0.25, alignItems: 'center' },
-  itemContenido: { alignItems: 'center' },
-  icono: { width: 28, height: 28, resizeMode: 'contain', marginBottom: 4 },
-  label: { fontSize: 11 },
+  item: {
+    alignItems: 'center',
+    flex: 0.25,
+  },
+  icon: { width: 28, height: 28, resizeMode: 'contain', marginBottom: 4 },
 });

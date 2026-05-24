@@ -1,93 +1,122 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, Pressable, FlatList, ActivityIndicator } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { database } from '../firebase'; 
+import { database } from '../firebase';
 import { ref, onValue, update } from 'firebase/database';
+import { getTheme, sharedStyles } from '../theme';
 
-export default function Retos({ Oscuro, userRole }) {
-  const fondo = Oscuro ? '#1c1c1e' : '#f2f2f7';
-  const texto = Oscuro ? '#ffffff' : '#1c1c1e';
-  const tarjetaBg = Oscuro ? '#2c2c2e' : '#ffffff';
-
+export default function Retos({ isDark, userRole }) {
   const [retos, setRetos] = useState([]);
-  const [cursoSeleccionado, setCursoSeleccionado] = useState('Primero');
-  const [cargando, setCargando] = useState(true);
+  const [grado, setGrado] = useState('Primero');
+  const [loading, setLoading] = useState(true);
+  const theme = getTheme(isDark);
 
-  const grados = ['Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Septimo', 'Octavo', 'Noveno', 'Decimo', 'Once'];
+  const grados = [
+    'Primero',
+    'Segundo',
+    'Tercero',
+    'Cuarto',
+    'Quinto',
+    'Sexto',
+    'Septimo',
+    'Octavo',
+    'Noveno',
+    'Decimo',
+    'Once',
+  ];
 
+  // Load challenges for selected grade
   useEffect(() => {
-    setCargando(true);
-    const retosRef = ref(database, `retos/${cursoSeleccionado}`);
-    
-    const unsubscribe = onValue(retosRef, (snapshot) => {
-      const data = snapshot.val();
+    setLoading(true);
+    const retosRef = ref(database, `retos/${grado}`);
+    const unsub = onValue(retosRef, (snap) => {
+      const data = snap.val();
       if (data) {
-        setRetos(Object.keys(data).map(k => ({ id: k, ...data[k] })));
-        setCargando(false);
+        setRetos(Object.entries(data).map(([id, val]) => ({ id, ...val })));
+        setLoading(false);
       } else {
-        // SI ESTÁ VACÍO: Auto-inyecta los 6 retos de prueba automáticamente
-        inyectarRetosAutomaticos();
+        // auto‑inject demo challenges if none exist
+        injectDemoChallenges();
       }
     });
-    return () => unsubscribe();
-  }, [cursoSeleccionado]);
+    return () => unsub();
+  }, [grado]);
 
-  const inyectarRetosAutomaticos = async () => {
-    const retosEjemplo = [
-      { tit: "Traer 15 botellas plásticas limpias", pts: 10 },
-      { tit: "Apagar luces y ventiladores al salir", pts: 5 },
-      { tit: "Separar residuos orgánicos del descanso", pts: 15 },
-      { tit: "Mantener la zona verde del curso limpia", pts: 20 },
-      { tit: "Crear cartelera sobre fauna local", pts: 25 },
-      { tit: "Sembrar una planta en el colegio", pts: 30 }
+  const injectDemoChallenges = async () => {
+    const demo = [
+      { titulo: 'Traer 15 botellas plásticas limpias', puntos: 10 },
+      { titulo: 'Apagar luces y ventiladores al salir', puntos: 5 },
+      { titulo: 'Separar residuos orgánicos del descanso', puntos: 15 },
+      { titulo: 'Mantener la zona verde del curso limpia', puntos: 20 },
+      { titulo: 'Crear cartelera sobre fauna local', puntos: 25 },
+      { titulo: 'Sembrar una planta en el colegio', puntos: 30 },
     ];
-    const paquete = {};
-    grados.forEach(g => {
-      retosEjemplo.forEach((reto, i) => {
-        paquete[`retos/${g}/reto_auto_${i}`] = { titulo: reto.tit, puntos: reto.pts, completado: false };
+    const batch = {};
+    grados.forEach((g) => {
+      demo.forEach((r, i) => {
+        batch[`retos/${g}/reto_auto_${i}`] = { titulo: r.titulo, puntos: r.puntos, completado: false };
       });
     });
-    await update(ref(database), paquete);
+    await update(ref(database), batch);
   };
 
-  const alternar = async (id, estado) => {
+  const toggleComplete = async (id, current) => {
     if (userRole !== 'admin') return;
-    await update(ref(database, `retos/${cursoSeleccionado}/${id}`), { completado: !estado });
+    await update(ref(database, `retos/${grado}/${id}`), { completado: !current });
   };
+
+  const renderItem = ({ item }) => (
+    <View
+      style={[
+        sharedStyles.card,
+        { backgroundColor: theme.card },
+        item.completado && { borderColor: theme.primary },
+      ]}
+    >
+      <View style={styles.info}>
+        <Text style={[styles.title, { color: theme.text }]}>{item.titulo}</Text>
+        <Text style={styles.points}>+{item.puntos} pts</Text>
+      </View>
+      {userRole === 'admin' ? (
+        <Pressable
+          style={[styles.actionBtn, { backgroundColor: item.completado ? theme.danger : theme.primary }]}
+          onPress={() => toggleComplete(item.id, item.completado)}
+        >
+          <Text style={styles.actionText}>{item.completado ? 'Deshacer' : 'Completar'}</Text>
+        </Pressable>
+      ) : (
+        <Text style={{ color: item.completado ? theme.primary : theme.subtle }}>
+          {item.completado ? '✅ Logrado' : '⏳ Pendiente'}
+        </Text>
+      )}
+    </View>
+  );
 
   return (
-    <View style={[styles.base, { backgroundColor: fondo }]}>
-      <View style={[styles.caja, { backgroundColor: tarjetaBg }]}>
-        <Text style={styles.lblGris}>Filtrar grado:</Text>
-        <View style={styles.bordeGris}>
-          <Picker selectedValue={cursoSeleccionado} onValueChange={setCursoSeleccionado} style={{ color: texto, height: 50 }}>
-            {grados.map(g => <Picker.Item key={g} label={`Grado ${g}`} value={g} />)}
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.filterBox, { backgroundColor: theme.card }]}>
+        <Text style={styles.filterLabel}>Filtrar grado:</Text>
+        <View style={styles.pickerWrap}>
+          <Picker
+            selectedValue={grado}
+            onValueChange={setGrado}
+            style={{ color: theme.text, height: 50 }}
+          >
+            {grados.map((g) => (
+              <Picker.Item key={g} label={`Grado ${g}`} value={g} />
+            ))}
           </Picker>
         </View>
       </View>
 
-      {cargando ? <ActivityIndicator size="large" color="#34C759" /> : (
+      {loading ? (
+        <ActivityIndicator size="large" color={theme.primary} />
+      ) : (
         <FlatList
           data={retos}
-          keyExtractor={item => item.id}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <View style={[styles.tarjeta, { backgroundColor: tarjetaBg }, item.completado && styles.bordeOk]}>
-              <View style={styles.info}>
-                <Text style={[styles.tit, { color: texto }]}>{item.titulo}</Text>
-                <Text style={styles.pts}>+{item.puntos} Pts</Text>
-              </View>
-              {userRole === 'admin' ? (
-                <TouchableOpacity style={[styles.btnAccion, item.completado ? styles.bgRojo : styles.bgVerde]} onPress={() => alternar(item.id, item.completado)}>
-                  <Text style={styles.txtBlanco}>{item.completado ? 'Deshacer' : 'Completar'}</Text>
-                </TouchableOpacity>
-              ) : (
-                <Text style={item.completado ? styles.lblVerde : styles.lblGris}>
-                  {item.completado ? '✅ Logrado' : '⏳ Pendiente'}
-                </Text>
-              )}
-            </View>
-          )}
         />
       )}
     </View>
@@ -95,68 +124,13 @@ export default function Retos({ Oscuro, userRole }) {
 }
 
 const styles = StyleSheet.create({
-  base: {
-    flex: 1,
-    padding: 12,
-  },
-  caja: {
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  bordeGris: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-  },
-  tarjeta: {
-    flexDirection: 'row',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  bordeOk: {
-    borderColor: '#34c759',
-  },
-  info: {
-    flex: 1,
-  },
-  tit: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  pts: {
-    color: '#ff9500',
-    fontWeight: 'bold',
-  },
-  btnAccion: {
-    padding: 10,
-    borderRadius: 8,
-  },
-  bgVerde: {
-    backgroundColor: '#34c759',
-  },
-  bgRojo: {
-    backgroundColor: '#ff3b30',
-  },
-  txtBlanco: {
-    color: '#FFF',
-    fontWeight: 'bold',
-    fontSize: 13,
-  },
-  lblVerde: {
-    color: '#34c759',
-    fontWeight: 'bold',
-  },
-  lblGris: {
-    color: '#8e8e93',
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
+  container: { flex: 1, padding: 12 },
+  filterBox: { padding: 15, borderRadius: 10, marginBottom: 15, borderWidth: 1 },
+  filterLabel: { fontSize: 16, fontWeight: 'bold', marginBottom: 8 },
+  pickerWrap: { borderWidth: 1, borderRadius: 8 },
+  info: { flex: 1 },
+  title: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
+  points: { color: '#ff9500', fontWeight: 'bold' },
+  actionBtn: { padding: 10, borderRadius: 8, alignItems: 'center' },
+  actionText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
 });
