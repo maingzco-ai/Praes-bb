@@ -31,14 +31,14 @@ export default function InfoApp({ isDark }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flexGrow: 1 },
   center: { alignItems: 'center', marginVertical: 20 },
   logo: { width: 100, height: 100, marginBottom: 10 },
   title: { fontSize: 24, fontWeight: 'bold' },
   subtitle: { fontSize: 14 },
-  box: { backgroundColor: theme.card, marginHorizontal: 15, marginVertical: 8, padding: 15, borderRadius: 10 },
-  boxTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 5, color: theme.text },
-  boxBody: { fontSize: 14, lineHeight: 20, color: theme.text },
-  boxTitleWhite: { fontSize: 18, fontWeight: 'bold', color: theme.text, marginBottom: 5 },
-  boxBodyWhite: { fontSize: 14, color: theme.text, lineHeight: 20 },
+  box: { backgroundColor: '#fff', marginHorizontal: 15, marginVertical: 8, padding: 15, borderRadius: 10 },
+  boxTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 5 },
+  boxBody: { fontSize: 14, lineHeight: 20 },
+  boxTitleWhite: { fontSize: 18, fontWeight: 'bold', marginBottom: 5 },
+  boxBodyWhite: { fontSize: 14, lineHeight: 20 },
 });

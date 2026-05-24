@@ -54,7 +54,7 @@ export default function App() {
           />
         );
       default:
-        return <Tablainfo isDark={isDark} />;
+        return <Tablainfo Oscuro={isDark} />;
     }
   };
 
@@ -77,7 +77,9 @@ export default function App() {
           <Modal visible={showInfo} transparent animationType="fade">
             <View style={styles.modalBackdrop}>
               <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
-                <InfoApp />
+                <View style={{ flex: 1 }}>
+                  <InfoApp isDark={isDark} />
+                </View>
                 <Pressable style={styles.btnClose} onPress={() => setShowInfo(false)}>
                   <Text style={styles.btnCloseText}>Cerrar</Text>
                 </Pressable>
@@ -119,7 +121,7 @@ const styles = StyleSheet.create({
   icon: { fontSize: 22 },
   content: { flex: 1, paddingHorizontal: 16 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalCard: { width: '85%', borderRadius: 20, padding: 20, alignItems: 'center' },
+  modalCard: { width: '85%', maxHeight: '80%', borderRadius: 20, padding: 20, flexDirection: 'column' },
   title: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
   input: { width: '100%', borderWidth: 1, borderRadius: 8, padding: 10, marginBottom: 15 },
   btnClose: { backgroundColor: '#FF3B30', padding: 12, borderRadius: 8, width: '100%', alignItems: 'center' },
