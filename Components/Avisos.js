@@ -5,7 +5,7 @@ import { ref, onValue } from 'firebase/database';
 import { getTheme, sharedStyles } from '../theme';
 
 export default function Avisos({ isDark }) {
-  const [avisos, setAvisos] = useState([]);
+  const [avisos, setAvisos]   = useState([]);
   const [loading, setLoading] = useState(true);
   const theme = getTheme(isDark);
 
@@ -14,7 +14,9 @@ export default function Avisos({ isDark }) {
     const unsub = onValue(avisosRef, (snap) => {
       const data = snap.val();
       const list = data
-        ? Object.entries(data).map(([id, val]) => ({ id, ...val })).reverse()
+        ? Object.entries(data)
+            .map(([id, val]) => ({ id, ...val }))
+            .reverse()
         : [];
       setAvisos(list);
       setLoading(false);
@@ -31,11 +33,16 @@ export default function Avisos({ isDark }) {
   }
 
   const renderItem = ({ item }) => (
-    <View style={[sharedStyles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-      <Text style={styles.tag}>📢 COMUNICADO OFFICIAL</Text>
+    <View
+      style={[
+        sharedStyles.card,
+        { backgroundColor: theme.card, borderColor: theme.border },
+      ]}
+    >
+      <Text style={styles.tag}>📢 COMUNICADO OFICIAL</Text>
       <Text style={[styles.title, { color: theme.text }]}>{item.titulo}</Text>
       <Text style={[styles.body, { color: theme.text }]}>{item.contenido}</Text>
-      <Text style={styles.date}>Publicado el: {item.fecha}</Text>
+      <Text style={[styles.date, { color: theme.subtle }]}>Publicado el: {item.fecha}</Text>
     </View>
   );
 
@@ -45,7 +52,11 @@ export default function Avisos({ isDark }) {
         data={avisos}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        ListEmptyComponent={<Text style={styles.empty}>No hay avisos o noticias.</Text>}
+        ListEmptyComponent={
+          <Text style={[styles.empty, { color: theme.subtle }]}>
+            No hay avisos publicados aún.
+          </Text>
+        }
         showsVerticalScrollIndicator={false}
       />
     </View>
@@ -53,11 +64,37 @@ export default function Avisos({ isDark }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 15 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  tag: { fontSize: 10, fontWeight: '700', color: '#007aff', marginBottom: 6 },
-  title: { fontSize: 18, fontWeight: 'bold', marginBottom: 6 },
-  body: { fontSize: 14, lineHeight: 20, marginBottom: 10 },
-  date: { fontSize: 11, color: '#8e8e93' },
-  empty: { textAlign: 'center', color: '#8e8e93', marginTop: 40, fontStyle: 'italic' },
+  container: {
+    flex: 1,
+    padding: 15,
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tag: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#007aff',
+    marginBottom: 6,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  body: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  date: {
+    fontSize: 11,
+  },
+  empty: {
+    textAlign: 'center',
+    marginTop: 40,
+    fontStyle: 'italic',
+  },
 });

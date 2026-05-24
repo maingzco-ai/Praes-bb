@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Importaciones de Firebase Realtime Database
 import { database } from '../firebase.js'; 
 import { ref, onValue } from 'firebase/database';
 
@@ -10,7 +9,8 @@ import { ref, onValue } from 'firebase/database';
 function TarjetaCurso({ item, Oscuro, fondoTarjeta, textoPrincipal, textoSecundario, bordes }) {
   const [expandido, setExpandido] = useState(false);
   const historialClaves = item.history ? Object.keys(item.history) : [];
-  const fondoExpandido = Oscuro ? '#2c2c2e' : '#fbfbfd';
+  const fondoExpandido = Oscuro ? '#2c2c2e' : '#f7f7f9';
+  const colorDivisor = Oscuro ? '#3a3a3c' : '#e5e5ea';
 
   return (
     <View style={[styles.tarjeta, { backgroundColor: fondoTarjeta, borderColor: bordes }]}>
@@ -34,16 +34,16 @@ function TarjetaCurso({ item, Oscuro, fondoTarjeta, textoPrincipal, textoSecunda
           <Text style={[styles.textoPts, { color: textoSecundario }]}>
             pts
           </Text>
-          <Text style={styles.iconoFlecha}>
+          <Text style={[styles.iconoFlecha, { color: textoSecundario }]}>
             {expandido ? '▲' : '▼'}
           </Text>
         </View>
       </TouchableOpacity>
 
-      {/* HISTORIAL DESPLEGABLE: Muestra los kilos y puntos acumulados */}
+      {/* HISTORIAL DESPLEGABLE */}
       {expandido && (
         <View style={[styles.despliegueContenido, { backgroundColor: fondoExpandido }]}>
-          <View style={[styles.lineaDivisoria, { backgroundColor: colorBordes }]} />
+          <View style={[styles.lineaDivisoria, { backgroundColor: colorDivisor }]} />
           <Text style={[styles.tituloSeccionSecundaria, { color: textoSecundario }]}>
             Historial de Aportes
           </Text>
@@ -56,18 +56,44 @@ function TarjetaCurso({ item, Oscuro, fondoTarjeta, textoPrincipal, textoSecunda
             historialClaves.map((clave) => {
               const registro = item.history[clave];
               return (
-                <View key={clave} style={styles.filaHistorial}>
-                  <Text style={[styles.textoHistorialTipo, { color: textoPrincipal }]}>
-                    🌱 {registro.tipo || 'Reciclaje'}
-                  </Text>
-                  <View style={styles.historialMetricas}>
-                    {registro.kg && (
-                      <Text style={[styles.textoHistorialKg, { color: textoSecundario }]}>
-                        {registro.kg} kg
+                <View key={clave} style={[styles.filaHistorial, { borderBottomColor: colorDivisor }]}>
+                  {/* Tipo de aporte e icono */}
+                  <View style={styles.historialIzquierda}>
+                    <Text style={[styles.textoHistorialTipo, { color: textoPrincipal }]}>
+                      {registro.tipo === 'Papel' ? '♻️' : registro.tipo === 'Reto' ? '🏆' : '🌱'} {registro.tipo || 'Reciclaje'}
+                    </Text>
+                    {/* Fecha */}
+                    {registro.fecha && (
+                      <Text style={[styles.textoHistorialFecha, { color: textoSecundario }]}>
+                        📅 {registro.fecha}
                       </Text>
                     )}
-                    <Text style={styles.textoHistorialPuntos}>
-                      +{registro.Puntos} pts
+                    {/* Admin */}
+                    {registro.admin && (
+                      <Text style={[styles.textoHistorialAdmin, { color: textoSecundario }]}>
+                        👤 {registro.admin}
+                      </Text>
+                    )}
+                    {/* Descripcion adicional (reto) */}
+                    {registro.descripcion && (
+                      <Text style={[styles.textoHistorialDesc, { color: textoSecundario }]}>
+                        📋 {registro.descripcion}
+                      </Text>
+                    )}
+                    {/* Kg si aplica */}
+                    {registro.kg && (
+                      <Text style={[styles.textoHistorialKg, { color: textoSecundario }]}>
+                        ⚖️ {registro.kg} kg
+                      </Text>
+                    )}
+                  </View>
+                  {/* Puntos */}
+                  <View style={styles.historialDerecha}>
+                    <Text style={[
+                      styles.textoHistorialPuntos,
+                      { color: registro.Puntos < 0 ? '#ff3b30' : '#34c759' }
+                    ]}>
+                      {registro.Puntos >= 0 ? '+' : ''}{registro.Puntos} pts
                     </Text>
                   </View>
                 </View>
@@ -80,12 +106,11 @@ function TarjetaCurso({ item, Oscuro, fondoTarjeta, textoPrincipal, textoSecunda
   );
 }
 
-// COMPONENTE PRINCIPAL: Tabla de posiciones general del PRAES
+// COMPONENTE PRINCIPAL
 export default function Tablainfo({ Oscuro }) {
   const [listaGrados, setListaGrados] = useState([]);
   const [cargando, setCargando] = useState(true);
 
-  // Paleta de colores dinámica según el estado del switch de Modo Oscuro
   const fondoPantalla = Oscuro ? '#1c1c1e' : '#f2f2f7';
   const textoPrincipal = Oscuro ? '#ffffff' : '#1c1c1e';
   const textoSecundario = Oscuro ? '#a0a0a0' : '#8e8e93';
@@ -94,12 +119,9 @@ export default function Tablainfo({ Oscuro }) {
 
   useEffect(() => {
     const gradosRef = ref(database, 'Grados');
-    
-    // Escucha activa y sincronización directa con Realtime Database
     const unsubscribe = onValue(gradosRef, (snapshot) => {
       const datos = snapshot.val();
       if (datos) {
-        // Filtramos valores nulos y ordenamos el ranking de mayor a menor puntaje
         const procesados = datos
           .filter(g => g !== null)
           .sort((a, b) => (b.score || 0) - (a.score || 0));
@@ -197,6 +219,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+    overflow: 'hidden',
   },
   tarjetaHeader: {
     flexDirection: 'row',
@@ -219,6 +242,7 @@ const styles = StyleSheet.create({
   infoDerecha: {
     flexDirection: 'row',
     alignItems: 'baseline',
+    gap: 3,
   },
   textoPuntaje: {
     fontSize: 20,
@@ -226,31 +250,26 @@ const styles = StyleSheet.create({
   },
   textoPts: {
     fontSize: 12,
-    marginLeft: 3,
-    marginRight: 12,
+    marginRight: 8,
   },
   iconoFlecha: {
     fontSize: 12,
-    color: '#c7c7cc',
     fontWeight: 'bold',
   },
   despliegueContenido: {
     paddingHorizontal: 18,
-    paddingBottom: 18,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
+    paddingBottom: 14,
   },
   lineaDivisoria: {
     height: 1,
-    backgroundColor: '#e5e5ea',
     marginBottom: 12,
   },
   tituloSeccionSecundaria: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 10,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   textoVacio: {
     fontSize: 13,
@@ -260,24 +279,39 @@ const styles = StyleSheet.create({
   filaHistorial: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  historialIzquierda: {
+    flex: 1,
+    paddingRight: 10,
+    gap: 2,
+  },
+  historialDerecha: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   textoHistorialTipo: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  historialMetricas: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  textoHistorialFecha: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  textoHistorialAdmin: {
+    fontSize: 11,
+  },
+  textoHistorialDesc: {
+    fontSize: 11,
+    fontStyle: 'italic',
   },
   textoHistorialKg: {
-    fontSize: 13,
-    marginRight: 10,
+    fontSize: 11,
   },
   textoHistorialPuntos: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#34c759',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

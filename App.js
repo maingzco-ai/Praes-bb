@@ -10,23 +10,42 @@ import Admin from './Components/Admin';
 import { getTheme, sharedStyles } from './theme';
 
 export default function App() {
-  const [isDark, setIsDark] = useState(false);
-  const [showInfo, setShowInfo] = useState(false);
-  const [screen, setScreen] = useState('tabla');
-  const [userRole, setUserRole] = useState('viewer');
+  const [isDark, setIsDark]       = useState(false);
+  const [showInfo, setShowInfo]   = useState(false);
+  const [screen, setScreen]       = useState('tabla');
+  const [userRole, setUserRole]   = useState('viewer');
   const [loginVisible, setLoginVisible] = useState(false);
-  const [password, setPassword] = useState('');
+  const [password, setPassword]   = useState('');
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const theme = getTheme(isDark);
+  const fadeAnim    = useRef(new Animated.Value(0)).current;
+  const contentAnim = useRef(new Animated.Value(1)).current;
+  const theme       = getTheme(isDark);
 
+  // Fade de entrada al abrir la app
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 300,
+      duration: 350,
       useNativeDriver: true,
     }).start();
   }, []);
+
+  // Cambio de pantalla con transición suave fade-out → swap → fade-in
+  const changeScreen = (newScreen) => {
+    if (newScreen === screen) return;
+    Animated.timing(contentAnim, {
+      toValue: 0,
+      duration: 130,
+      useNativeDriver: true,
+    }).start(() => {
+      setScreen(newScreen);
+      Animated.timing(contentAnim, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    });
+  };
 
   const handleLogin = () => {
     if (password === 'colombo2026') {
@@ -60,8 +79,16 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <Animated.View style={{ flex: 1, backgroundColor: theme.background, opacity: fadeAnim }}>
+      <Animated.View
+        style={[
+          styles.root,
+          { backgroundColor: theme.background },
+          { opacity: fadeAnim },
+        ]}
+      >
         <SafeAreaView style={styles.container}>
+
+          {/* Header */}
           <View style={styles.header}>
             <Pressable onPress={() => setIsDark(!isDark)}>
               <Text style={styles.icon}>{isDark ? '☀️' : '🌙'}</Text>
@@ -70,14 +97,19 @@ export default function App() {
               <Text style={styles.icon}>ℹ️</Text>
             </Pressable>
           </View>
-          <View style={styles.content}>{renderScreen()}</View>
-          <BarraNav isDark={isDark} screen={screen} onChangeScreen={setScreen} />
 
-          {/* Info modal */}
+          {/* Contenido con transición suave */}
+          <Animated.View style={[styles.content, { opacity: contentAnim }]}>
+            {renderScreen()}
+          </Animated.View>
+
+          <BarraNav isDark={isDark} screen={screen} onChangeScreen={changeScreen} />
+
+          {/* Modal Info */}
           <Modal visible={showInfo} transparent animationType="fade">
-            <View style={styles.modalBackdrop}>
+            <View style={styles.backdrop}>
               <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
-                <View style={{ flex: 1 }}>
+                <View style={styles.modalContent}>
                   <InfoApp isDark={isDark} />
                 </View>
                 <Pressable style={styles.btnClose} onPress={() => setShowInfo(false)}>
@@ -87,11 +119,11 @@ export default function App() {
             </View>
           </Modal>
 
-          {/* Login modal */}
+          {/* Modal Login */}
           <Modal visible={loginVisible} transparent animationType="slide">
-            <View style={styles.modalBackdrop}>
+            <View style={styles.backdrop}>
               <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
-                <Text style={[styles.title, { color: theme.text }]}>Docente</Text>
+                <Text style={[styles.loginTitle, { color: theme.text }]}>Docente</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text }]}
                   secureTextEntry
@@ -109,6 +141,7 @@ export default function App() {
               </View>
             </View>
           </Modal>
+
         </SafeAreaView>
       </Animated.View>
     </SafeAreaProvider>
@@ -116,15 +149,66 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', padding: 20 },
-  icon: { fontSize: 22 },
-  content: { flex: 1, paddingHorizontal: 16 },
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalCard: { width: '85%', maxHeight: '80%', borderRadius: 20, padding: 20, flexDirection: 'column' },
-  title: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
-  input: { width: '100%', borderWidth: 1, borderRadius: 8, padding: 10, marginBottom: 15 },
-  btnClose: { backgroundColor: '#FF3B30', padding: 12, borderRadius: 8, width: '100%', alignItems: 'center' },
-  btnCloseText: { color: '#fff', fontWeight: 'bold' },
-  btnText: { color: '#fff', fontWeight: 'bold' },
+  root: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 20,
+  },
+  icon: {
+    fontSize: 22,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCard: {
+    width: '85%',
+    maxHeight: '80%',
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: 'column',
+  },
+  modalContent: {
+    flex: 1,
+  },
+  btnClose: {
+    backgroundColor: '#FF3B30',
+    padding: 12,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  btnCloseText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  loginTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  input: {
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 15,
+  },
+  btnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
 });
