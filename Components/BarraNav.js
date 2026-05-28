@@ -6,10 +6,11 @@ export default function BarraNav({ isDark, screen, onChangeScreen }) {
   const theme = getTheme(isDark);
 
   const items = [
-    { key: 'tabla',  icon: require('../assets/Rankingtable.png'), label: 'Tabla'  },
+    { key: 'tabla', icon: require('../assets/Rankingtable.png'), label: 'Tabla'  },
     { key: 'avisos', icon: require('../assets/avisos.png'),       label: 'Avisos' },
-    { key: 'retos',  icon: require('../assets/retos.png'),        label: 'Retos'  },
-    { key: 'admin',  icon: require('../assets/admin.png'),        label: 'Admin'  },
+    { key: 'retos', icon: require('../assets/retos.png'),        label: 'Retos'  },
+    { key: 'admin', icon: require('../assets/admin.png'),        label: 'Admin'  },
+    { key: 'mapa', icon: require('../assets/mapa.png'), label: 'mapas'},
   ];
 
   return (

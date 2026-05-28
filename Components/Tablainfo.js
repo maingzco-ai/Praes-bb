@@ -5,7 +5,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { database } from '../firebase.js'; 
 import { ref, onValue } from 'firebase/database';
 
-// COMPONENTE SECUNDARIO: Tarjeta individual por cada Grado Escolar
 function TarjetaCurso({ item, Oscuro, fondoTarjeta, textoPrincipal, textoSecundario, bordes }) {
   const [expandido, setExpandido] = useState(false);
   const historialClaves = item.history ? Object.keys(item.history) : [];
@@ -13,7 +12,8 @@ function TarjetaCurso({ item, Oscuro, fondoTarjeta, textoPrincipal, textoSecunda
   const colorDivisor = Oscuro ? '#3a3a3c' : '#e5e5ea';
 
   return (
-    <View style={[styles.tarjeta, { backgroundColor: fondoTarjeta, borderColor: bordes }]}>
+    <View style={[styles.tarjeta,
+    { backgroundColor: fondoTarjeta, borderColor: bordes }]}>
       <TouchableOpacity 
         style={styles.tarjetaHeader}
         onPress={() => setExpandido(!expandido)}

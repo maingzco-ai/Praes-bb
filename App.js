@@ -21,7 +21,6 @@ export default function App() {
   const contentAnim = useRef(new Animated.Value(1)).current;
   const theme       = getTheme(isDark);
 
-  // Fade de entrada al abrir la app
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -30,7 +29,7 @@ export default function App() {
     }).start();
   }, []);
 
-  // Cambio de pantalla con transición suave fade-out → swap → fade-in
+
   const changeScreen = (newScreen) => {
     if (newScreen === screen) return;
     Animated.timing(contentAnim, {
@@ -98,7 +97,6 @@ export default function App() {
             </Pressable>
           </View>
 
-          {/* Contenido con transición suave */}
           <Animated.View style={[styles.content, { opacity: contentAnim }]}>
             {renderScreen()}
           </Animated.View>
@@ -117,10 +115,8 @@ export default function App() {
                 </Pressable>
               </View>
             </View>
-          </Modal>
-
-          {/* Modal Login */}
-          <Modal visible={loginVisible} transparent animationType="slide">
+         </Modal>
+         <Modal visible={loginVisible} transparent animationType="slide">
             <View style={styles.backdrop}>
               <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
                 <Text style={[styles.loginTitle, { color: theme.text }]}>Docente</Text>
