@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, Pressable, FlatList, ActivityIndicator, Alert }
 import { Picker } from '@react-native-picker/picker';
 import { database } from '../firebase';
 import { ref, onValue, update, get } from 'firebase/database';
-import { getTheme, sharedStyles } from '../theme';
+import { getTheme, shadows, borderRadius, spacing } from '../theme';
 
 export default function Retos({ isDark, userRole }) {
   const [retos, setRetos] = useState([]);
@@ -49,7 +49,6 @@ export default function Retos({ isDark, userRole }) {
     await update(ref(database), batch);
   };
 
-  // Suma o resta puntos al score del grado y agrega/elimina registro en historial
   const toggleComplete = async (item) => {
     if (userRole !== 'admin') return;
 
@@ -57,7 +56,6 @@ export default function Retos({ isDark, userRole }) {
     const cambio = nuevaCompletado ? item.puntos : -item.puntos;
 
     try {
-      // Leer datos actuales del grado
       const snap = await get(ref(database, 'Grados'));
       const data = snap.val();
       if (!data) return;
@@ -72,14 +70,10 @@ export default function Retos({ isDark, userRole }) {
       const historialKey = `reto_${item.id}`;
       const updates = {};
 
-      // Actualizar estado del reto
       updates[`retos/${grado}/${item.id}/completado`] = nuevaCompletado;
-
-      // Actualizar score del grado
       updates[`Grados/${index}/score`] = scoreActual + cambio;
 
       if (nuevaCompletado) {
-        // Agregar registro en historial
         updates[`Grados/${index}/history/${historialKey}`] = {
           Puntos: item.puntos,
           tipo: 'Reto',
@@ -88,9 +82,7 @@ export default function Retos({ isDark, userRole }) {
           admin: 'Docente PRAES',
         };
       } else {
-        // Quitar registro del historial al deshacer
         updates[`Grados/${index}/history/${historialKey}`] = null;
-        // Agregar registro negativo para auditoria
         updates[`Grados/${index}/history/deshacer_${item.id}_${Date.now()}`] = {
           Puntos: -item.puntos,
           tipo: 'Reto (Deshecho)',
@@ -103,7 +95,7 @@ export default function Retos({ isDark, userRole }) {
       await update(ref(database), updates);
 
       Alert.alert(
-        nuevaCompletado ? '✅ Reto Completado' : '↩️ Reto Deshecho',
+        nuevaCompletado ? 'Reto Completado' : 'Reto Deshecho',
         `${nuevaCompletado ? '+' : ''}${cambio} pts para Grado ${grado}`
       );
     } catch (e) {
@@ -115,36 +107,74 @@ export default function Retos({ isDark, userRole }) {
   const renderItem = ({ item }) => (
     <View
       style={[
-        sharedStyles.card,
-        { backgroundColor: theme.card, borderColor: item.completado ? theme.primary : theme.border },
+        styles.card,
+        {
+          backgroundColor: theme.card,
+          borderColor: item.completado ? theme.primary : theme.border,
+        },
+        shadows.sm,
       ]}
     >
-      <View style={styles.info}>
-        <Text style={[styles.title, { color: theme.text }]}>{item.titulo}</Text>
-        <Text style={[styles.points, { color: item.completado ? theme.primary : '#ff9500' }]}>
-          {item.completado ? '✅' : '🎯'} {item.puntos} pts
-        </Text>
+      <View style={styles.cardContent}>
+        <View style={styles.cardLeft}>
+          <View style={[styles.iconCircle, {
+            backgroundColor: item.completado ? theme.primaryLight : theme.warningLight,
+          }]}>
+            <Text style={styles.iconText}>
+              {item.completado ? '✅' : '🎯'}
+            </Text>
+          </View>
+          <View style={styles.cardInfo}>
+            <Text style={[styles.title, { color: theme.text }]}>{item.titulo}</Text>
+            <Text style={[styles.points, { color: item.completado ? theme.primary : theme.warning }]}>
+              {item.puntos} pts
+            </Text>
+          </View>
+        </View>
+        {userRole === 'admin' ? (
+          <Pressable
+            style={[styles.actionBtn, {
+              backgroundColor: item.completado ? theme.danger : theme.primary,
+            }]}
+            onPress={() => toggleComplete(item)}
+          >
+            <Text style={styles.actionText}>
+              {item.completado ? 'Deshacer' : 'Completar'}
+            </Text>
+          </Pressable>
+        ) : (
+          <View style={[styles.statusBadge, {
+            backgroundColor: item.completado ? theme.primaryLight : theme.backgroundAlt,
+          }]}>
+            <Text style={[styles.statusText, {
+              color: item.completado ? theme.primary : theme.subtle,
+            }]}>
+              {item.completado ? 'Logrado' : 'Pendiente'}
+            </Text>
+          </View>
+        )}
       </View>
-      {userRole === 'admin' ? (
-        <Pressable
-          style={[styles.actionBtn, { backgroundColor: item.completado ? theme.danger : theme.primary }]}
-          onPress={() => toggleComplete(item)}
-        >
-          <Text style={styles.actionText}>{item.completado ? '↩️ Deshacer' : '✓ Completar'}</Text>
-        </Pressable>
-      ) : (
-        <Text style={{ color: item.completado ? theme.primary : theme.subtle, fontSize: 13 }}>
-          {item.completado ? '✅ Logrado' : '⏳ Pendiente'}
-        </Text>
+      {item.completado && (
+        <View style={[styles.completedBar, { backgroundColor: theme.primary }]} />
       )}
     </View>
   );
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={[styles.filterBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <Text style={[styles.filterLabel, { color: theme.text }]}>Filtrar grado:</Text>
-        <View style={[styles.pickerWrap, { borderColor: theme.border }]}>
+      <View style={styles.headerSection}>
+        <Text style={[styles.screenTitle, { color: theme.text }]}>Retos</Text>
+        <Text style={[styles.screenSubtitle, { color: theme.subtle }]}>
+          Desafíos ambientales por grado
+        </Text>
+      </View>
+
+      <View style={[styles.filterBox, { backgroundColor: theme.card, borderColor: theme.border }, shadows.sm]}>
+        <View style={styles.filterLabelRow}>
+          <Text style={styles.filterIcon}>🎯</Text>
+          <Text style={[styles.filterLabel, { color: theme.text }]}>Filtrar por grado</Text>
+        </View>
+        <View style={[styles.pickerWrap, { borderColor: theme.border, backgroundColor: theme.inputBg }]}>
           <Picker
             selectedValue={grado}
             onValueChange={setGrado}
@@ -158,13 +188,21 @@ export default function Retos({ isDark, userRole }) {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={theme.primary} />
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
       ) : (
         <FlatList
           data={retos}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <Text style={[styles.emptyText, { color: theme.subtle }]}>
+              No hay retos disponibles
+            </Text>
+          }
         />
       )}
     </View>
@@ -172,13 +210,121 @@ export default function Retos({ isDark, userRole }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 12 },
-  filterBox: { padding: 15, borderRadius: 10, marginBottom: 15, borderWidth: 1 },
-  filterLabel: { fontSize: 16, fontWeight: 'bold', marginBottom: 8 },
-  pickerWrap: { borderWidth: 1, borderRadius: 8 },
-  info: { flex: 1, marginBottom: 10 },
-  title: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
-  points: { fontWeight: 'bold', fontSize: 14 },
-  actionBtn: { padding: 10, borderRadius: 8, alignItems: 'center' },
-  actionText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
+  container: { flex: 1 },
+  headerSection: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.md,
+  },
+  screenTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  screenSubtitle: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  filterBox: {
+    marginHorizontal: spacing.lg,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    marginBottom: spacing.lg,
+  },
+  filterLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  filterIcon: {
+    fontSize: 16,
+  },
+  filterLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  pickerWrap: {
+    borderWidth: 1,
+    borderRadius: borderRadius.sm,
+    overflow: 'hidden',
+  },
+  loadingWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listContent: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 30,
+  },
+  card: {
+    borderRadius: borderRadius.lg,
+    marginBottom: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  cardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  cardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: spacing.md,
+  },
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconText: {
+    fontSize: 20,
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  points: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  actionBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: borderRadius.sm,
+  },
+  actionText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  statusBadge: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: borderRadius.full,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  completedBar: {
+    height: 3,
+    width: '100%',
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 40,
+    fontStyle: 'italic',
+  },
 });
